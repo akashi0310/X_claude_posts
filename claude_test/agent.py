@@ -1,12 +1,11 @@
-"""RAG chat agent: question → embed → Qdrant search → Gemini Flash answer."""
+"""RAG chat agent: question → embed → Supabase vector search → Gemini Flash answer."""
 
 from datetime import datetime
 
 import google.generativeai as genai
-from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from config import COLLECTION_NAME, GEMINI_API_KEY, GEMINI_MODEL
-from database import embed_texts, get_qdrant
+from config import GEMINI_API_KEY, GEMINI_MODEL
+from database import embed_texts, get_supabase
 
 SYSTEM_PROMPT = """You are an AI assistant that answers questions based on recent X/Twitter posts
 from specific accounts. Use the provided context (retrieved posts) to answer the user's question.
@@ -25,69 +24,50 @@ Rules:
 
 
 def search_posts(query: str, top_k: int = 10, username_filter: str | None = None) -> list[dict]:
-    """Embed query and search Qdrant for relevant posts, optionally filtered by username."""
+    """Embed query and search Supabase for relevant posts, optionally filtered by username."""
     query_vector = embed_texts([query])[0]
-    client = get_qdrant()
+    client = get_supabase()
 
-    search_filter = None
-    if username_filter:
-        search_filter = Filter(
-            must=[FieldCondition(key="username", match=MatchValue(value=username_filter))]
-        )
+    result = client.rpc("match_posts", {
+        "query_embedding": query_vector,
+        "match_count": top_k,
+        "filter_username": username_filter,
+    }).execute()
 
-    results = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        query_filter=search_filter,
-        limit=top_k,
-    )
     return [
         {
-            "username": r.payload["username"],
-            "text": r.payload["text"],
-            "date": r.payload["date"],
-            "likes": r.payload.get("likes", 0),
-            "retweets": r.payload.get("retweets", 0),
-            "url": r.payload.get("url", ""),
-            "score": r.score,
+            "username": r.get("username", ""),
+            "text": r.get("text", ""),
+            "date": r.get("date", ""),
+            "likes": r.get("likes", 0),
+            "retweets": r.get("retweets", 0),
+            "url": r.get("url", ""),
+            "score": r.get("similarity", 0),
         }
-        for r in results.points
+        for r in result.data
     ]
 
 
-def search_by_username(username: str, top_k: int = 20) -> list[dict]:
-    """Search all posts from a specific username (for sidebar preview)."""
-    client = get_qdrant()
-    results = client.scroll(
-        collection_name=COLLECTION_NAME,
-        scroll_filter=Filter(
-            must=[FieldCondition(key="username", match=MatchValue(value=username))]
-        ),
-        limit=top_k,
-    )
-    posts = []
-    for r in results[0]:
-        posts.append({
-            "username": r.payload["username"],
-            "text": r.payload["text"],
-            "date": r.payload["date"],
-            "likes": r.payload.get("likes", 0),
-            "retweets": r.payload.get("retweets", 0),
-            "url": r.payload.get("url", ""),
-        })
-    # Sort by date descending
-    posts.sort(key=lambda x: x["date"], reverse=True)
-    return posts
+def search_by_username(username: str | None = None, top_k: int = 20) -> list[dict]:
+    """Search posts, optionally filtered by username (for sidebar preview)."""
+    client = get_supabase()
+    query = client.table("x_posts").select("username, text, date, likes, retweets, url")
+    if username:
+        query = query.eq("username", username)
+    result = query.order("date", desc=True).limit(top_k).execute()
+    return result.data
 
 
 def build_context(posts: list[dict]) -> str:
     """Format retrieved posts as context for the LLM."""
     lines = []
     for i, p in enumerate(posts, 1):
+        date_str = f" ({p['date']})" if p.get("date") else ""
+        likes_str = f" [likes: {p['likes']}]" if p.get("likes") else ""
         lines.append(
-            f"[{i}] @{p['username']} ({p['date']}) [likes: {p['likes']}]\n"
+            f"[{i}] @{p['username']}{date_str}{likes_str}\n"
             f"    {p['text']}\n"
-            f"    {p['url']}"
+            f"    {p.get('url', '')}"
         )
     return "\n\n".join(lines)
 
@@ -110,29 +90,24 @@ def ask(
     """Full RAG pipeline with conversation history and optional username filter."""
     genai.configure(api_key=GEMINI_API_KEY)
 
-    # Build a search query that incorporates conversation context
     search_query = question
     if username_filter:
         search_query = f"@{username_filter} {question}"
 
-    # Retrieve relevant posts
     posts = search_posts(search_query, top_k=top_k, username_filter=username_filter)
     if not posts:
         return "No relevant posts found in the database. Try collecting some posts first."
 
     context = build_context(posts)
 
-    # Build conversation history string
     history_str = ""
     if chat_history:
         history_str = f"\n**Conversation History:**\n{format_chat_history(chat_history)}\n"
 
-    # Active filter info
     filter_str = ""
     if username_filter:
         filter_str = f"\n**ACTIVE FILTER:** Only showing posts from @{username_filter}\n"
 
-    # Generate answer with Gemini Flash
     model = genai.GenerativeModel(
         model_name=GEMINI_MODEL,
         system_instruction=SYSTEM_PROMPT,

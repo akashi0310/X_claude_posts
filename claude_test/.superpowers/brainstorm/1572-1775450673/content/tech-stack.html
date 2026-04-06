@@ -1,0 +1,26 @@
+<h2>Frontend Tech Stack</h2>
+<p class="subtitle">You said no Streamlit. What should we build with?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Flask + Vanilla HTML/CSS/JS (Recommended)</h3>
+      <p>Lightweight Python backend (Flask) serving a single-page app. No build tools, no npm, no Node. Just Python + HTML/CSS/JS files. Easy to run: <code>python app.py</code>. Fastest to build and deploy.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>FastAPI + Vanilla HTML/CSS/JS</h3>
+      <p>Same as A but with FastAPI instead of Flask. Async-native, auto-generated API docs at /docs. Slightly more modern. Also just <code>python app.py</code>.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Next.js / React</h3>
+      <p>Full React frontend with separate Python API backend. Requires Node.js, npm, build step. More complex setup but more scalable for future features.</p>
+    </div>
+  </div>
+</div>

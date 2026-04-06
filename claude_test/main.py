@@ -9,7 +9,8 @@ Usage:
     python main.py index             # Embed & index posts.json into Qdrant
     python main.py chat              # Interactive Q&A with the RAG agent
     python main.py ask "question"    # One-shot question
-    python main.py schedule [N]      # Auto scrape+index every N minutes (default: 30)
+    python main.py schedule [N]      # Auto scrape+index every N min via XCrawl (default: 30)
+    python main.py schedule --pw [N]  # Auto scrape+index via Playwright instead
 """
 
 import asyncio
@@ -80,8 +81,11 @@ def main():
         print(f"\n{answer}")
 
     elif cmd == "schedule":
-        from scheduler import main as scheduler_main
-        scheduler_main()
+        from scheduler import run_scheduler, DEFAULT_INTERVAL_MIN
+        use_pw = "--pw" in sys.argv
+        args = [a for a in sys.argv[2:] if not a.startswith("--")]
+        interval = int(args[0]) if args else DEFAULT_INTERVAL_MIN
+        run_scheduler(interval, use_pw=use_pw)
 
     else:
         print(f"Unknown command: {cmd}")

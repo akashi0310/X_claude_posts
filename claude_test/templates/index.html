@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X RAG Agent</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: #fff;
+  min-height: 100vh;
+}
+
+/* ---------- Nav ---------- */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: #0a0a0a;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  z-index: 100;
+}
+.nav-row1 {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px;
+}
+.logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px; font-weight: bold; color: #FF6B35;
+}
+.nav-tabs { display: flex; gap: 4px; margin-left: 24px; }
+.nav-tab {
+  padding: 6px 18px; border-radius: 6px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  color: #a1a1aa; background: transparent;
+  border: none; transition: all 0.2s;
+}
+.nav-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.nav-tab.active { background: rgba(255,107,53,0.15); color: #FF6B35; font-weight: 600; }
+.nav-left { display: flex; align-items: center; }
+.nav-stats { display: flex; gap: 16px; font-size: 12px; color: #a1a1aa; }
+.nav-stats .green { color: #22c55e; }
+
+.nav-row2 {
+  padding: 0 32px 12px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.chip {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #a1a1aa; background: transparent;
+  transition: all 0.2s; white-space: nowrap;
+}
+.chip:hover { border-color: rgba(255,107,53,0.3); color: #e4e4e7; }
+.chip.active {
+  border-color: rgba(255,107,53,0.4);
+  background: rgba(255,107,53,0.1);
+  color: #FF6B35;
+}
+
+/* ---------- Main ---------- */
+.main { padding-top: 110px; }
+
+/* ---------- Feed ---------- */
+.feed {
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 1024px) { .feed { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .feed { grid-template-columns: 1fr; padding: 16px; } }
+
+.post-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 16px;
+  transition: border-color 0.2s;
+}
+.post-card:hover { border-color: rgba(255,107,53,0.3); }
+.post-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; font-weight: bold; flex-shrink: 0;
+}
+.post-username { color: #fff; font-size: 13px; font-weight: 600; }
+.post-date { color: #71717a; font-size: 11px; margin-left: auto; }
+.post-text {
+  color: #e4e4e7; font-size: 13px; line-height: 1.5;
+  margin-bottom: 10px;
+  display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.post-footer {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.post-metrics { display: flex; gap: 12px; color: #71717a; font-size: 11px; }
+.post-link {
+  color: #FF6B35; font-size: 11px; text-decoration: none; font-weight: 600;
+}
+.post-link:hover { text-decoration: underline; }
+
+.load-more {
+  grid-column: 1 / -1; text-align: center; padding: 16px;
+}
+.load-more button {
+  padding: 8px 24px; border-radius: 8px;
+  background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.3);
+  color: #FF6B35; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.load-more button:hover { background: rgba(255,107,53,0.2); }
+
+/* ---------- Chat ---------- */
+.chat-container {
+  display: none; flex-direction: column;
+  height: calc(100vh - 110px);
+}
+.chat-container.active { display: flex; }
+.feed.active { display: grid; }
+.feed { display: none; }
+
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 24px 32px;
+}
+.chat-msg {
+  display: flex; margin-bottom: 16px;
+  max-width: 75%;
+}
+.chat-msg.user {
+  margin-left: auto; justify-content: flex-end;
+}
+.chat-bubble {
+  padding: 12px 16px;
+  font-size: 14px; line-height: 1.6;
+}
+.chat-msg.user .chat-bubble {
+  background: rgba(255,107,53,0.1);
+  border: 1px solid rgba(255,107,53,0.2);
+  border-radius: 16px 16px 4px 16px;
+  color: #fff;
+}
+.chat-msg.assistant .chat-bubble {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px 16px 16px 4px;
+  color: #e4e4e7;
+}
+
+.chat-input-bar {
+  padding: 16px 32px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.chat-input-wrap {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 8px 12px;
+}
+.chat-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: #fff; font-size: 14px; font-family: inherit;
+  resize: none; height: 24px; max-height: 120px;
+}
+.chat-input::placeholder { color: #71717a; }
+.chat-send {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: #FF6B35; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #0a0a0a; font-size: 18px; font-weight: bold;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.chat-send:hover { background: #e55a2b; }
+.chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.chat-filter-indicator {
+  padding: 8px 32px; font-size: 12px; color: #71717a;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.chat-filter-indicator span { color: #FF6B35; }
+
+.typing-indicator {
+  display: flex; gap: 4px; padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px 16px 16px 4px;
+}
+.typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #71717a;
+  animation: typingBounce 1.4s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+
+/* ---------- Skeleton ---------- */
+.skeleton-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 16px;
+}
+.skeleton-line {
+  height: 12px; border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+  animation: pulse 1.5s infinite;
+  margin-bottom: 8px;
+}
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 100%; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center; padding: 60px 20px;
+  color: #71717a; font-size: 14px;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-row1">
+    <div class="nav-left">
+      <div class="logo">X RAG Agent</div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="feed">Feed</button>
+        <button class="nav-tab" data-tab="chat">Chat</button>
+      </div>
+    </div>
+    <div class="nav-stats">
+      <span id="stat-posts">— posts</span>
+      <span>·</span>
+      <span id="stat-accounts">— accounts</span>
+      <span class="green" id="stat-updated">—</span>
+    </div>
+  </div>
+  <div class="nav-row2" id="chips-container"></div>
+</nav>
+
+<!-- Main Content -->
+<div class="main">
+  <!-- Feed Tab -->
+  <div class="feed active" id="feed"></div>
+
+  <!-- Chat Tab -->
+  <div class="chat-container" id="chat">
+    <div class="chat-filter-indicator" id="chat-filter" style="display:none;">
+      Filtering: <span id="chat-filter-name"></span>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div style="text-align:center; padding:60px 20px; color:#71717a; font-size:14px;">
+        Ask anything about the tracked X/Twitter posts.
+      </div>
+    </div>
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap">
+        <input type="text" class="chat-input" id="chat-input"
+               placeholder="Ask about the tracked posts..." autocomplete="off">
+        <button class="chat-send" id="chat-send">↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- State ----------
+let activeTab = 'feed';
+let activeFilter = null;
+let chatHistory = [];
+let accounts = [];
+let postOffset = 0;
+const POST_LIMIT = 30;
+
+// ---------- Avatar colors ----------
+const GRADIENTS = [
+  'linear-gradient(135deg, #FF6B35, #D87756)',
+  'linear-gradient(135deg, #a78bfa, #7c3aed)',
+  'linear-gradient(135deg, #22c55e, #16a34a)',
+  'linear-gradient(135deg, #3b82f6, #2563eb)',
+  'linear-gradient(135deg, #f59e0b, #d97706)',
+  'linear-gradient(135deg, #ec4899, #db2777)',
+  'linear-gradient(135deg, #14b8a6, #0d9488)',
+];
+function avatarGradient(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+}
+
+// ---------- Init ----------
+async function init() {
+  await loadStats();
+  await loadPosts();
+}
+
+// ---------- Stats ----------
+async function loadStats() {
+  const res = await fetch('/api/stats');
+  const data = await res.json();
+  document.getElementById('stat-posts').textContent = data.total_posts.toLocaleString() + ' posts';
+  document.getElementById('stat-accounts').textContent = data.active_accounts + ' accounts';
+  document.getElementById('stat-updated').textContent = 'Updated ' + data.last_updated;
+  accounts = data.accounts;
+  renderChips();
+}
+
+// ---------- Chips ----------
+function renderChips() {
+  const container = document.getElementById('chips-container');
+  container.innerHTML = accounts.map(a =>
+    `<button class="chip${activeFilter === a ? ' active' : ''}" data-account="${a}">@${a}</button>`
+  ).join('');
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const account = chip.dataset.account;
+      activeFilter = activeFilter === account ? null : account;
+      renderChips();
+      updateChatFilter();
+      postOffset = 0;
+      loadPosts();
+    });
+  });
+}
+
+// ---------- Posts ----------
+function showSkeletons() {
+  const feed = document.getElementById('feed');
+  feed.innerHTML = Array(6).fill(0).map(() =>
+    `<div class="skeleton-card">
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line long"></div>
+      <div class="skeleton-line long"></div>
+      <div class="skeleton-line medium"></div>
+    </div>`
+  ).join('');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr.slice(0, 10);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[d.getMonth()] + ' ' + d.getDate();
+}
+
+async function loadPosts(append = false) {
+  if (!append) showSkeletons();
+  let url = `/api/posts?limit=${POST_LIMIT}&offset=${postOffset}`;
+  if (activeFilter) url += `&username=${activeFilter}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const feed = document.getElementById('feed');
+
+  if (!append) feed.innerHTML = '';
+
+  if (data.posts.length === 0 && !append) {
+    feed.innerHTML = '<div class="empty-state">No posts found.</div>';
+    return;
+  }
+
+  data.posts.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'post-card';
+    card.innerHTML = `
+      <div class="post-header">
+        <div class="avatar" style="background:${avatarGradient(p.username)}">${p.username[0].toUpperCase()}</div>
+        <span class="post-username">@${p.username}</span>
+        <span class="post-date">${formatDate(p.date)}</span>
+      </div>
+      <div class="post-text">${escapeHtml(p.text)}</div>
+      <div class="post-footer">
+        <div class="post-metrics">
+          <span>${p.likes || 0} likes</span>
+          <span>${p.retweets || 0} RTs</span>
+        </div>
+        ${p.url ? `<a class="post-link" href="${p.url}" target="_blank" rel="noopener">View →</a>` : ''}
+      </div>
+    `;
+    feed.appendChild(card);
+  });
+
+  // Load more button
+  if (data.posts.length >= POST_LIMIT) {
+    const loadMoreDiv = document.createElement('div');
+    loadMoreDiv.className = 'load-more';
+    loadMoreDiv.innerHTML = '<button>Load more</button>';
+    loadMoreDiv.querySelector('button').addEventListener('click', () => {
+      postOffset += POST_LIMIT;
+      loadMoreDiv.remove();
+      loadPosts(true);
+    });
+    feed.appendChild(loadMoreDiv);
+  }
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    document.getElementById('feed').classList.toggle('active', activeTab === 'feed');
+    document.getElementById('chat').classList.toggle('active', activeTab === 'chat');
+  });
+});
+
+// ---------- Chat ----------
+function updateChatFilter() {
+  const filterEl = document.getElementById('chat-filter');
+  const nameEl = document.getElementById('chat-filter-name');
+  if (activeFilter) {
+    filterEl.style.display = 'block';
+    nameEl.textContent = '@' + activeFilter;
+  } else {
+    filterEl.style.display = 'none';
+  }
+}
+
+function appendChatMessage(role, content) {
+  const container = document.getElementById('chat-messages');
+  // Remove welcome message if present
+  const welcome = container.querySelector('div[style]');
+  if (welcome && welcome.textContent.includes('Ask anything')) welcome.remove();
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `chat-msg ${role}`;
+  msgDiv.innerHTML = `<div class="chat-bubble">${role === 'assistant' ? formatMarkdown(content) : escapeHtml(content)}</div>`;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg assistant';
+  div.id = 'typing';
+  div.innerHTML = `<div class="typing-indicator">
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  appendChatMessage('user', question);
+  showTyping();
+
+  document.getElementById('chat-send').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        history: chatHistory,
+        username_filter: activeFilter,
+      }),
+    });
+    const data = await res.json();
+    removeTyping();
+    appendChatMessage('assistant', data.answer);
+    chatHistory.push({ role: 'user', content: question });
+    chatHistory.push({ role: 'assistant', content: data.answer });
+  } catch (err) {
+    removeTyping();
+    appendChatMessage('assistant', 'Error: ' + err.message);
+  }
+
+  document.getElementById('chat-send').disabled = false;
+  input.focus();
+}
+
+document.getElementById('chat-send').addEventListener('click', sendMessage);
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// ---------- Helpers ----------
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatMarkdown(text) {
+  // Basic markdown: bold, italic, lists, links, line breaks
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 5px;border-radius:3px;font-size:12px;">$1</code>');
+  html = html.replace(/^- (.+)$/gm, '<li style="margin-left:16px;color:#a1a1aa;font-size:13px;">$1</li>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// ---------- Start ----------
+init();
+</script>
+</body>
+</html>

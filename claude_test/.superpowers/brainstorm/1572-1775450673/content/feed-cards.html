@@ -1,0 +1,86 @@
+<h2>Feed Tab — Post Card Design</h2>
+<p class="subtitle">How should the post cards look in the Feed grid?</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A — Compact Cards</div>
+    <div class="mockup-body" style="background: #0a0a0a; padding: 16px;">
+      <!-- Card 1 -->
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #FF6B35, #D87756); display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold;">D</div>
+          <span style="color: #fff; font-size: 13px; font-weight: 600;">@DeRonin_</span>
+          <span style="color: #71717a; font-size: 11px; margin-left: auto;">Apr 5</span>
+        </div>
+        <p style="color: #e4e4e7; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">AI freelance demand grew 109% since 2025. 78% of organizations are using AI somewhere. The market is going from $7.6b to $100b+ by 2034...</p>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 12px; color: #71717a; font-size: 11px;">
+            <span>59 likes</span>
+            <span>7 RTs</span>
+          </div>
+          <a href="#" style="color: #FF6B35; font-size: 11px; text-decoration: none; font-weight: 600;">View →</a>
+        </div>
+      </div>
+      <!-- Card 2 -->
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #a78bfa, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold;">H</div>
+          <span style="color: #fff; font-size: 13px; font-weight: 600;">@hooeem</span>
+          <span style="color: #71717a; font-size: 11px; margin-left: auto;">Apr 4</span>
+        </div>
+        <p style="color: #e4e4e7; font-size: 13px; line-height: 1.5; margin: 0 0 10px 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">Imagine you decided to build your first AI agent: complete confusion, frustration, wanting to quit...</p>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 12px; color: #71717a; font-size: 11px;">
+            <span>42 likes</span>
+            <span>3 RTs</span>
+          </div>
+          <a href="#" style="color: #FF6B35; font-size: 11px; text-decoration: none; font-weight: 600;">View →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Expanded Cards with More Detail</div>
+    <div class="mockup-body" style="background: #0a0a0a; padding: 16px;">
+      <!-- Card 1 -->
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #FF6B35, #D87756); display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; font-weight: bold;">D</div>
+          <div>
+            <div style="color: #fff; font-size: 14px; font-weight: 600;">@DeRonin_</div>
+            <div style="color: #71717a; font-size: 11px;">April 5, 2026</div>
+          </div>
+        </div>
+        <p style="color: #e4e4e7; font-size: 14px; line-height: 1.6; margin: 0 0 14px 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">AI freelance demand grew 109% since 2025. 78% of organizations are using AI somewhere. The market is going from $7.6b to $100b+ by 2034 (Upwork predictions). WHERE if not NOW??? Here's where you can make real money...</p>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <div style="display: flex; gap: 16px; color: #71717a; font-size: 12px;">
+            <span>❤ 59</span>
+            <span>🔁 7</span>
+            <span>💬 22</span>
+          </div>
+          <a href="#" style="color: #FF6B35; font-size: 12px; text-decoration: none; font-weight: 600;">View on X →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height: 16px;"></div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Compact Cards</h3>
+      <p>Smaller avatars, 3-line text clamp, minimal metrics. Fits more posts on screen. Grid of 3 columns.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Expanded Cards</h3>
+      <p>Larger avatars, 4-line text clamp, full metrics with icons, divider line. More readable. Grid of 2-3 columns.</p>
+    </div>
+  </div>
+</div>

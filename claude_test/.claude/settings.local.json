@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info:*)",
+      "Bash(python:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.xcrawl.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "WebFetch(domain:developers.oxylabs.io)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:theclaudecode.xyz)",
+      "Bash(grep -E \"\\\\.\\(md|txt|json|yml|yaml\\)$\")",
+      "Bash(bash:*)"
+    ]
+  }
+}

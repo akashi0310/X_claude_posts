@@ -1,6 +1,0 @@
-2026/04/05-22:42:18.163 6210 Reusing MANIFEST C:\Users\lapla\OneDrive\Documents\codespace\claude_test\chrome_profile\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
-2026/04/05-22:42:18.166 6210 Recovering log #11
-2026/04/05-22:42:18.167 6210 Reusing old log C:\Users\lapla\OneDrive\Documents\codespace\claude_test\chrome_profile\Default\EdgeCoupons/coupons_data.db/000011.log 
-2026/04/05-22:42:18.323 36fc Level-0 table #15: started
-2026/04/05-22:42:18.328 36fc Level-0 table #15: 682148 bytes OK
-2026/04/05-22:42:18.333 36fc Delete type=0 #11
