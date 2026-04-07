@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.env
+chrome_profile/
+data/
+accounts.db
+*.pma
+.superpowers/
+.claude/
+=1.30
+auto_scrape.bat
+auto_scrape.bat.txt
