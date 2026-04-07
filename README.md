@@ -1,94 +1,191 @@
-# X/Twitter RAG Agent
+# X RAG Agent
 
-A Retrieval-Augmented Generation (RAG) system that scrapes X/Twitter posts from tracked accounts, indexes them into a vector database, and lets you ask natural language questions about the collected content.
-
-## How It Works
-
-1. **Scrape** posts from X/Twitter using the XCrawl API or Playwright browser automation
-2. **Embed & Index** posts into a Qdrant vector database using Google's Gemini embedding model
-3. **Chat** with an AI agent (Gemini 2.5 Flash) that retrieves relevant posts and answers your questions with citations
-
-## Architecture
-
-| Component | Description |
-|---|---|
-| `main.py` | CLI entry point for all commands |
-| `app.py` | Streamlit web UI with chat interface and sidebar filtering |
-| `agent.py` | RAG pipeline: embed query → Qdrant search → Gemini answer |
-| `xcrawl_scraper.py` | Scrapes X/Twitter via XCrawl API (AI-powered extraction) |
-| `collector.py` | Alternative scraper using twscrape + RSS fallback |
-| `importer.py` | Imports exported `.json`/`.md` files into the pipeline |
-| `scheduler.py` | Automated scrape+index loop on a configurable interval |
-| `config.py` | Central configuration (API keys, accounts, models) |
-
-## Prerequisites
-
-- Python 3.12+
-- Docker (for Qdrant)
-- API keys: **Gemini API** and **XCrawl API** (or X/Twitter credentials for Playwright scraping)
+A RAG-powered app that scrapes X/Twitter posts from tracked accounts, stores them with vector embeddings in Supabase, and lets you search and ask questions about them using AI.
 
 ## Setup
 
-1. **Start Qdrant:**
-   ```bash
-   docker compose up -d
-   ```
+### 1. Install Python dependencies
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+python -m venv venv
 
-3. **Configure environment variables** in a `.env` file:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key
-   XCRAWL_API_KEY=your_xcrawl_api_key
+# Windows PowerShell
+.\venv\Scripts\Activate
 
-   # Optional: for Playwright scraping
-   X_USERNAME=your_x_username
-   X_PASSWORD=your_x_password
+# Then install
+pip install -r requirements.txt
+playwright install
+```
 
-   # Optional: customize tracked accounts (comma-separated)
-   TWITTER_ACCOUNTS=DeRonin_,AnthropicAI,RLanceMartin,bcherny,HiTw93,hooeem,trq212
-   ```
+### 2. Configure `.env`
+
+Create a `.env` file in this folder:
+
+```
+GEMINI_API_KEY=your_gemini_api_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+TWITTER_ACCOUNTS=DeRonin_,AnthropicAI,HiTw93,hooeem,trq212
+X_USERNAME=your_x_email
+X_PASSWORD=your_x_password
+```
+
+- **GEMINI_API_KEY**: Get from https://aistudio.google.com/apikey
+- **SUPABASE_URL / KEY**: Get from your Supabase project → Settings → API
+- **TWITTER_ACCOUNTS**: Comma-separated X handles to track
+- **X_USERNAME / X_PASSWORD**: Your X/Twitter login (for Playwright scraper)
+
+### 3. Set up Supabase database
+
+In your Supabase dashboard, go to **SQL Editor** and run:
+
+```sql
+create extension if not exists vector;
+
+create table x_posts (
+  id text primary key,
+  username text not null,
+  text text not null,
+  date text default '',
+  likes int default 0,
+  retweets int default 0,
+  replies int default 0,
+  url text default '',
+  source text default '',
+  embedding vector(768)
+);
+
+create index on x_posts using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+
+create or replace function match_posts(
+  query_embedding vector(768),
+  match_count int default 10,
+  filter_username text default null
+)
+returns table (
+  id text, username text, text text, date text,
+  likes int, retweets int, replies int,
+  url text, source text, similarity float
+)
+language plpgsql as $$
+begin
+  return query
+  select
+    x.id, x.username, x.text, x.date, x.likes,
+    x.retweets, x.replies, x.url, x.source,
+    1 - (x.embedding <=> query_embedding) as similarity
+  from x_posts x
+  where (filter_username is null or x.username = filter_username)
+  order by x.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
+
+### 4. Log in to X (first time only)
+
+```bash
+python login_once.py
+```
+
+A browser window opens. Log in to your X/Twitter account manually, then close it. This saves your session to `chrome_profile/` so the scraper can use it without logging in every time.
 
 ## Usage
 
-### CLI
+### Scrape posts
 
 ```bash
-# Scrape posts using XCrawl API (recommended)
-python main.py scrape
-
-# Scrape using Playwright (headless)
-python main.py scrape --pw
-
-# Scrape using Playwright (visible browser)
+# Scrape with visible browser (recommended for first run)
 python main.py scrape --pw-head
 
-# Import exported .json/.md files from exports/
-python main.py import
+# Scrape headless (no browser window)
+python main.py scrape --pw
+```
 
-# Embed & index posts into Qdrant
+Takes ~2-5 minutes for 7 accounts. Posts are saved to `data/posts.json`.
+
+### Index posts into Supabase
+
+```bash
 python main.py index
+```
 
+Embeds all posts and stores them in Supabase with vector embeddings. Takes ~1-2 minutes for 300 posts.
+
+### Run the web app
+
+```bash
+python app.py
+```
+
+Open **http://127.0.0.1:5000** in your browser.
+
+- **Feed tab**: Browse latest posts from all tracked accounts
+- **Chat tab**: Ask questions about the posts using AI
+- **Filter chips**: Click an account name to filter posts and chat to that account
+
+### Auto-scrape on a schedule
+
+```bash
+# Scrape + index every 30 minutes
+python main.py schedule --pw 30
+
+# Custom interval (every 10 minutes)
+python main.py schedule --pw 10
+```
+
+This runs in a loop — use a separate terminal for the web app.
+
+### CLI chat (no web app needed)
+
+```bash
 # Interactive chat
 python main.py chat
 
 # One-shot question
-python main.py ask "What did AnthropicAI post about recently?"
-
-# Auto scrape+index every N minutes (default: 30)
-python main.py schedule 15
+python main.py ask "what did DeRonin_ post about AI?"
 ```
 
-### Web UI
+### Import exported data
 
 ```bash
-streamlit run app.py
+# Import .json or .md files from exports/ folder
+python main.py import
 ```
 
-The Streamlit app provides:
-- Chat interface with conversation history
-- Sidebar with quick account filters
-- Post previews with likes, retweets, and links to originals
+## Adding new accounts to track
+
+Edit the `TWITTER_ACCOUNTS` line in `.env`:
+
+```
+TWITTER_ACCOUNTS=DeRonin_,AnthropicAI,HiTw93,hooeem,trq212,NewUser1,NewUser2
+```
+
+Then scrape and index the new data:
+
+```bash
+python main.py scrape --pw-head
+python main.py index
+```
+
+Restart the Flask app (`python app.py`) to see the new account chips.
+
+## File Structure
+
+```
+├── app.py              # Flask web app
+├── templates/
+│   └── index.html      # Frontend (HTML/CSS/JS)
+├── agent.py            # RAG search + Gemini answer generation
+├── database.py         # Supabase + Gemini embedding layer
+├── config.py           # Environment config
+├── main.py             # CLI entry point
+├── pw_scraper.py       # Playwright browser scraper
+├── xcrawl_scraper.py   # XCrawl API scraper
+├── collector.py        # twscrape + RSS fallback scraper
+├── scheduler.py        # Auto scrape+index scheduler
+├── login_once.py       # One-time X login helper
+├── data/
+│   └── posts.json      # Scraped posts cache
+└── chrome_profile/     # Saved browser session
+```
